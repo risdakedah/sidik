@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="
+    default-src 'self';
+    script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://script.google.com https://script.googleusercontent.com;
+    style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://fonts.googleapis.com;
+    font-src https://fonts.gstatic.com https://cdnjs.cloudflare.com;
+    img-src 'self' https://i.ibb.co data:;
+    connect-src 'self' https://script.google.com https://script.googleusercontent.com https://cdn.jsdelivr.net;
+  ">
+  <meta http-equiv="X-Content-Type-Options" content="nosniff">
+  <meta http-equiv="X-Frame-Options" content="DENY">
+  <meta http-equiv="Referrer-Policy" content="strict-origin-when-cross-origin">
+  <meta name="robots" content="noindex, nofollow">
+  <title>SiDiK — Sistem Data Induk Kedah</title>
+
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+  <style>
+    /* ══════════════════════════════════════════════════════════
+       100% VISUAL SAMA SEPERTI PORTAL KEDAH DI HATIKU
+       Hanya kandungan teks & logik auth yang berbeza
+    ══════════════════════════════════════════════════════════ */
+    :root {
+      --risda-green: #006837;
+      --risda-gold:  #c6a355;
+      --neon-green:  #00ff88;
+      --dark-bg:     #0a0f0d;
+    }
+
+    body {
+      background: radial-gradient(circle at center, #1a2a1f 0%, var(--dark-bg) 100%);
+      font-family: 'Rajdhani', sans-serif;
+      color: white;
+      min-height: 100vh;
+      overflow-x: hidden;
+      display: flex;
+      flex-direction: column;
+      margin: 0;
+    }
+
+    .bg-grid {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background-image:
+        linear-gradient(rgba(0,255,136,0.05) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,255,136,0.05) 1px, transparent 1px);
+      background-size: 50px 50px;
+      z-index: -1;
+    }
+
+    /* ── Login Section ── */
+    #login-section {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: opacity 0.5s ease;
+    }
+
+    .login-card {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(198,163,85,0.3);
+      border-radius: 20px;
+      padding: 50px 40px;
+      text-align: center;
+      backdrop-filter: blur(15px);
+      box-shadow: 0 0 40px rgba(0,104,55,0.4);
+      width: 100%;
+      max-width: 450px;
+    }
+
+    .login-logo {
+      width: 110px;
+      margin-bottom: 20px;
+      animation: putarY3D 6s linear infinite;
+      transform-style: preserve-3d;
+    }
+    @keyframes putarY3D {
+      0%   { transform: rotateY(0deg); }
+      100% { transform: rotateY(360deg); }
+    }
+
+    .login-card h2 {
+      font-family: 'Orbitron', sans-serif;
+      color: var(--neon-green);
+      font-weight: 700;
+      margin-bottom: 10px;
+      letter-spacing: 2px;
+      line-height: 1.3;
+      font-size: 1.8rem;
+    }
+
+    .login-card p {
+      color: var(--risda-gold);
+      font-size: 1.1rem;
+      margin-bottom: 30px;
+      letter-spacing: 1px;
+    }
+
+    .attempt-warning {
+      font-size: 0.85rem;
+      color: #ff9944;
+      margin-bottom: 12px;
+      min-height: 20px;
+      transition: opacity 0.3s;
+    }
+
+    .input-group-custom { margin-bottom: 20px; position: relative; }
+    .input-group-custom i {
+      position: absolute; left: 15px; top: 14px;
+      color: var(--neon-green); z-index: 1;
+    }
+    .form-control-custom {
+      width: 100%;
+      padding: 12px 15px 12px 45px;
+      background: rgba(0,0,0,0.4);
+      border: 1px solid rgba(0,255,136,0.3);
+      border-radius: 8px;
+      color: white;
+      font-size: 1.1rem;
+      outline: none;
+      transition: 0.3s;
+      font-family: 'Rajdhani', sans-serif;
+    }
+    .form-control-custom:focus {
+      border-color: var(--neon-green);
+      box-shadow: 0 0 15px rgba(0,255,136,0.3);
+    }
+    .form-control-custom::placeholder { color: rgba(255,255,255,0.35); }
+
+    .btn-login {
+      background: linear-gradient(45deg, var(--risda-green), #009955);
+      color: white;
+      border: none;
+      width: 100%;
+      padding: 12px;
+      font-size: 1.2rem;
+      font-weight: 700;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: 0.3s;
+      font-family: 'Orbitron', sans-serif;
+    }
+    .btn-login:hover:not(:disabled) {
+      transform: translateY(-3px);
+      box-shadow: 0 5px 20px rgba(0,255,136,0.4);
+    }
+    .btn-login:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+    /* ── Lockout overlay ── */
+    .lockout-overlay {
+      position: fixed; inset: 0;
+      background: rgba(10,15,13,0.97);
+      z-index: 9999;
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      gap: 20px;
+    }
+    .lockout-overlay h2 {
+      font-family: 'Orbitron', sans-serif;
+      color: #dc3545; font-size: 1.5rem; text-align: center;
+    }
+    .lockout-timer {
+      font-family: 'Orbitron', sans-serif;
+      font-size: 3rem; color: var(--risda-gold);
+    }
+    .lockout-overlay p { color: #aaa; max-width: 380px; text-align: center; line-height: 1.6; }
+
+    /* ── Panel kejayaan ── */
+    #panel-berjaya { display: none; }
+    .ikon-berjaya {
+      font-size: 3rem; color: var(--neon-green);
+      margin-bottom: 16px;
+      animation: nadi 1s ease-in-out infinite;
+    }
+    @keyframes nadi {
+      0%,100% { transform: scale(1); }
+      50%      { transform: scale(1.08); }
+    }
+
+    footer {
+      text-align: center; padding: 15px;
+      background: rgba(0,0,0,0.6);
+      color: #666; font-size: 0.85rem;
+    }
+
+    @media (max-width: 480px) {
+      .login-card { padding: 35px 24px; }
+      .login-card h2 { font-size: 1.4rem; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="bg-grid"></div>
+
+<!-- ══════════════════════════════════════
+     SEKSYEN LOG MASUK
+══════════════════════════════════════ -->
+<div id="login-section">
+  <div class="login-card">
+
+    <img src="https://i.ibb.co/3yrQJvX0/logo-risda-gold-emboss-removebg-preview.png"
+         alt="Logo RISDA" class="login-logo" draggable="false">
+
+    <h2>SiDiK</h2>
+    <p>Sistem Data Induk Kedah</p>
+
+    <div class="attempt-warning" id="attemptWarning" aria-live="polite"></div>
+
+    <!-- Panel borang -->
+    <div id="panel-login">
+      <form id="loginForm" autocomplete="off" novalidate>
+        <div class="input-group-custom">
+          <i class="fas fa-envelope" aria-hidden="true"></i>
+          <input type="email" id="emailInput" class="form-control-custom"
+                 placeholder="Emel @risda.gov.my"
+                 autocomplete="email" spellcheck="false"
+                 maxlength="100" required
+                 aria-label="Alamat emel RISDA">
+        </div>
+        <button type="submit" class="btn-login" id="loginBtn">
+          <i class="fas fa-shield-halved me-2" aria-hidden="true"></i>Masuk SiDiK
+        </button>
+      </form>
+    </div>
+
+    <!-- Panel selepas berjaya -->
+    <div id="panel-berjaya">
+      <div class="ikon-berjaya"><i class="fas fa-circle-check"></i></div>
+      <div style="font-family:'Orbitron',sans-serif;font-size:1rem;color:var(--neon-green);letter-spacing:1.5px;margin-bottom:8px;">
+        AKSES DISAHKAN
+      </div>
+      <div id="displayNama" style="color:var(--risda-gold);font-weight:700;font-size:1.05rem;margin-bottom:12px;"></div>
+      <div style="color:#888;font-size:0.85rem;">
+        <i class="fas fa-spinner fa-spin me-1"></i>Memuatkan SiDiK...
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<footer>HAK CIPTA TERPELIHARA &copy; 2026 | INOVASI PENGURUSAN RISDA KEDAH</footer>
+
+<script>
+'use strict';
+
+// ══════════════════════════════════════════════════════════════════════
+// KONFIGURASI
+// ══════════════════════════════════════════════════════════════════════
+const CFG = Object.freeze({
+  GAS_URL        : 'https://script.google.com/macros/s/AKfycbzHNXz-kDnSS0LHn9VQmOckeHfC58oXBomikv01zuTm0EgrB9ye0z82hxm7LNjR4CJVqw/exec',
+  MAX_ATTEMPTS   : 5,
+  LOCKOUT_MINUTES: 15,
+  SESSION_MINUTES: 120,
+  STORAGE_KEY    : 'sidik_sess_v2',
+  LOCKOUT_KEY    : 'sidik_lock_v2',
+  DOMAIN_SUFFIX  : '@risda.gov.my',
+});
+
+let attemptCount = 0;
+let sessionTimer = null;
+let sessionExpiry = null;
+
+// ── Lockout ─────────────────────────────────────────────────────────
+function bacaLockout() {
+  try {
+    const raw = sessionStorage.getItem(CFG.LOCKOUT_KEY);
+    if (!raw) return null;
+    const obj = JSON.parse(raw);
+    if (Date.now() > obj.until) { sessionStorage.removeItem(CFG.LOCKOUT_KEY); return null; }
+    return obj;
+  } catch { return null; }
+}
+
+function tetapkanLockout() {
+  const until = Date.now() + CFG.LOCKOUT_MINUTES * 60_000;
+  sessionStorage.setItem(CFG.LOCKOUT_KEY, JSON.stringify({ until }));
+  paparkanLockout(until);
+}
+
+function paparkanLockout(until) {
+  document.getElementById('lockoutOverlay')?.remove();
+  const overlay = document.createElement('div');
+  overlay.className = 'lockout-overlay';
+  overlay.id = 'lockoutOverlay';
+  overlay.setAttribute('role', 'alert');
+  overlay.innerHTML = `
+    <i class="fas fa-shield-alt" style="font-size:4rem;color:#dc3545;"></i>
+    <h2>🛑 AKSES DIKUNCI SEMENTARA</h2>
+    <div class="lockout-timer" id="lockCountdown" aria-live="polite">--:--</div>
+    <p>Terlalu banyak cubaan akses gagal. SiDiK dikunci buat sementara atas sebab keselamatan.</p>
+    <p style="font-size:0.85rem;color:#666;">Hubungi pentadbir ICT jika memerlukan bantuan segera.</p>
+  `;
+  document.body.appendChild(overlay);
+  kiraturunLockout(until, overlay);
+}
+
+function kiraturunLockout(until, overlay) {
+  const tick = () => {
+    const baki = Math.max(0, until - Date.now());
+    const m = String(Math.floor(baki / 60_000)).padStart(2, '0');
+    const s = String(Math.floor((baki % 60_000) / 1000)).padStart(2, '0');
+    const el = document.getElementById('lockCountdown');
+    if (el) el.textContent = `${m}:${s}`;
+    if (baki <= 0) {
+      overlay.remove();
+      sessionStorage.removeItem(CFG.LOCKOUT_KEY);
+      attemptCount = 0;
+      kemaskinWarning();
+    } else { setTimeout(tick, 1000); }
+  };
+  tick();
+}
+
+function kemaskinWarning() {
+  const el = document.getElementById('attemptWarning');
+  if (!el) return;
+  const baki = CFG.MAX_ATTEMPTS - attemptCount;
+  el.textContent = attemptCount > 0
+    ? `⚠ ${baki} cubaan lagi sebelum SiDiK dikunci (${CFG.LOCKOUT_MINUTES} minit)`
+    : '';
+}
+
+// ── Pengesahan emel ──────────────────────────────────────────────────
+function sahkanFormatEmel(emel) {
+  if (!emel || typeof emel !== 'string' || emel.length > 100) return false;
+  return /^[a-z0-9][a-z0-9._-]{0,62}@risda\.gov\.my$/i.test(emel);
+}
+
+// ── SHA-256 Hash ─────────────────────────────────────────────────────
+async function hashEmel(emel) {
+  const encoded = new TextEncoder().encode(emel.toLowerCase().trim());
+  const buf = await crypto.subtle.digest('SHA-256', encoded);
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+// ── JSONP ────────────────────────────────────────────────────────────
+function panggilGAS(token) {
+  return new Promise((resolve, reject) => {
+    const cbName = 'gasCallback_' + Date.now();
+    const script = document.createElement('script');
+    const timer = setTimeout(() => {
+      cleanup();
+      reject(new Error('Timeout — GAS tidak menjawab dalam 15 saat'));
+    }, 15000);
+
+    function cleanup() {
+      clearTimeout(timer);
+      delete window[cbName];
+      if (script.parentNode) script.parentNode.removeChild(script);
+    }
+
+    window[cbName] = function(data) { cleanup(); resolve(data); };
+
+    const url = CFG.GAS_URL
+      + '?action=authenticate'
+      + '&token=' + encodeURIComponent(token)
+      + '&callback=' + cbName
+      + '&ts=' + Date.now();
+
+    script.src = url;
+    script.onerror = () => { cleanup(); reject(new Error('Skrip GAS gagal dimuatkan')); };
+    document.head.appendChild(script);
+  });
+}
+
+// ── Log Masuk ────────────────────────────────────────────────────────
+async function prosesLogin(e) {
+  e.preventDefault();
+
+  const kunci = bacaLockout();
+  if (kunci) { paparkanLockout(kunci.until); return; }
+
+  const loginBtn = document.getElementById('loginBtn');
+  const emel = document.getElementById('emailInput').value.toLowerCase().trim();
+
+  if (!sahkanFormatEmel(emel)) {
+    Swal.fire({ icon:'warning', title:'Format Emel Tidak Sah',
+      text:'Sila masukkan emel rasmi anda (contoh: nama@risda.gov.my)',
+      background:'#0a0f0d', color:'#fff' });
+    return;
+  }
+
+  attemptCount++;
+  loginBtn.disabled = true;
+  loginBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Mengesahkan...';
+
+  Swal.fire({ title:'MENGESAHKAN IDENTITI...',
+    html:'Sistem sedang menyemak kelayakan akses anda.',
+    background:'#0a0f0d', color:'#fff',
+    allowOutsideClick:false, showConfirmButton:false,
+    didOpen:() => Swal.showLoading() });
+
+  try {
+    const token = await hashEmel(emel);
+    const data  = await panggilGAS(token);
+
+    if (data && data.status === 'OK' && data.authorised === true) {
+      attemptCount = 0;
+      simpanSesi(emel, data.nama || emel.split('@')[0], data.peranan, data.ptj);
+      Swal.close();
+      mainkanBunyi();
+      tunjukKejayaan(emel, data.nama);
+    } else {
+      Swal.close();
+      tanganiGagal();
+    }
+
+  } catch (err) {
+    console.warn('[SiDiK] Auth gagal:', err.message);
+    Swal.close();
+    Swal.fire({ icon:'error', title:'Ralat Sambungan',
+      text:'Tidak dapat menghubungi pelayan pengesahan. Cuba sebentar lagi.',
+      background:'#0a0f0d', color:'#fff' });
+    resetBtn();
+  }
+}
+
+function tanganiGagal() {
+  if (attemptCount >= CFG.MAX_ATTEMPTS) { Swal.close(); tetapkanLockout(); return; }
+  kemaskinWarning();
+  resetBtn();
+  Swal.fire({ icon:'error', title:'🛑 AKSES DISEKAT',
+    text:'Emel anda tidak mempunyai kebenaran akses SiDiK.',
+    background:'#0a0f0d', color:'#fff', confirmButtonColor:'#dc3545' });
+}
+
+function resetBtn() {
+  const btn = document.getElementById('loginBtn');
+  if (btn) {
+    btn.disabled = false;
+    btn.innerHTML = '<i class="fas fa-shield-halved me-2"></i>Masuk SiDiK';
+  }
+}
+
+// ── Paparan kejayaan & redirect ──────────────────────────────────────
+function tunjukKejayaan(emel, nama) {
+  const papar = nama || emel.split('@')[0];
+  document.getElementById('panel-login').style.display  = 'none';
+  document.getElementById('panel-berjaya').style.display = 'block';
+  document.getElementById('displayNama').textContent     = papar;
+  // Redirect ke SiDiK GAS selepas 2 saat
+  setTimeout(() => { window.location.href = CFG.GAS_URL; }, 2000);
+}
+
+// ── Sesi ─────────────────────────────────────────────────────────────
+function simpanSesi(emel, nama, peranan, ptj) {
+  const expiry = Date.now() + CFG.SESSION_MINUTES * 60_000;
+  sessionStorage.setItem(CFG.STORAGE_KEY, btoa(JSON.stringify({ emel, nama, peranan, ptj, expiry })));
+  sessionExpiry = expiry;
+}
+
+function bacaSesi() {
+  try {
+    const raw = sessionStorage.getItem(CFG.STORAGE_KEY);
+    if (!raw) return null;
+    const sesi = JSON.parse(atob(raw));
+    if (!sesi?.expiry || !sesi.emel || Date.now() > sesi.expiry) {
+      sessionStorage.removeItem(CFG.STORAGE_KEY); return null;
+    }
+    return sesi;
+  } catch { return null; }
+}
+
+function perbaharuiSesi() {
+  const sesi = bacaSesi();
+  if (!sesi) return;
+  sesi.expiry = Date.now() + CFG.SESSION_MINUTES * 60_000;
+  sessionStorage.setItem(CFG.STORAGE_KEY, btoa(JSON.stringify(sesi)));
+  sessionExpiry = sesi.expiry;
+}
+
+// ── Bunyi berjaya ────────────────────────────────────────────────────
+function mainkanBunyi() {
+  try {
+    const ctx  = new (window.AudioContext || window.webkitAudioContext)();
+    const osc  = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(600, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(1200, ctx.currentTime + 0.2);
+    gain.gain.setValueAtTime(0, ctx.currentTime);
+    gain.gain.linearRampToValueAtTime(0.2, ctx.currentTime + 0.1);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.start(); osc.stop(ctx.currentTime + 0.4);
+  } catch { /* AudioContext tidak tersedia */ }
+}
+
+// ── Event Listeners ──────────────────────────────────────────────────
+document.getElementById('loginForm').addEventListener('submit', prosesLogin);
+
+// Perbaharui sesi apabila ada aktiviti
+['click','keydown','mousemove','touchstart'].forEach(ev => {
+  document.addEventListener(ev, () => { if (bacaSesi()) perbaharuiSesi(); }, { passive: true });
+});
+
+window.addEventListener('DOMContentLoaded', () => {
+  // Sesi masih sah? Redirect terus ke SiDiK
+  const sesi = bacaSesi();
+  if (sesi) { tunjukKejayaan(sesi.emel, sesi.nama); return; }
+
+  // Kunci aktif?
+  const kunci = bacaLockout();
+  if (kunci) paparkanLockout(kunci.until);
+});
+
+// Amaran keselamatan di console
+console.log('%c🛑 AMARAN KESELAMATAN!', 'color:#dc3545;font-size:36px;font-weight:bold;');
+console.log('%cSiDiK dipantau. Sebarang percubaan memanipulasi sesi adalah kesalahan.',
+  'color:#c6a355;font-size:14px;font-family:monospace;');
+</script>
+</body>
+</html>
