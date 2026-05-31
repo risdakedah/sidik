@@ -382,9 +382,7 @@ async function prosesLogin(e) {
   const emel = document.getElementById('emailInput').value.toLowerCase().trim();
 
   if (!sahkanFormatEmel(emel)) {
-    Swal.fire({ icon:'warning', title:'Format Emel Tidak Sah',
-      text:'Sila masukkan emel rasmi anda (contoh: nama@risda.gov.my)',
-      background:'#0a0f0d', color:'#fff' });
+    Swal.fire({ icon:'warning', title:'Format Emel Tidak Sah', text:'Sila masukkan emel rasmi anda.', background:'#0a0f0d', color:'#fff' });
     return;
   }
 
@@ -392,11 +390,7 @@ async function prosesLogin(e) {
   loginBtn.disabled = true;
   loginBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Mengesahkan...';
 
-  Swal.fire({ title:'MENGESAHKAN IDENTITI...',
-    html:'Sistem sedang menyemak kelayakan akses anda.',
-    background:'#0a0f0d', color:'#fff',
-    allowOutsideClick:false, showConfirmButton:false,
-    didOpen:() => Swal.showLoading() });
+  Swal.fire({ title:'MENGESAHKAN IDENTITI...', html:'Sistem sedang menyemak kelayakan akses anda.', background:'#0a0f0d', color:'#fff', allowOutsideClick:false, showConfirmButton:false, didOpen:() => Swal.showLoading() });
 
   try {
     const token = await hashEmel(emel);
@@ -404,7 +398,10 @@ async function prosesLogin(e) {
 
     if (data && data.status === 'OK' && data.authorised === true) {
       attemptCount = 0;
-      simpanSesi(emel, data.nama || emel.split('@')[0], data.peranan, data.ptj);
+      
+      // ✅ PERUBAHAN DI SINI: Tambah 'data.akses'
+      simpanSesi(emel, data.nama || emel.split('@')[0], data.peranan, data.ptj, data.akses); 
+      
       Swal.close();
       mainkanBunyi();
       tunjukKejayaan(emel, data.nama);
@@ -412,13 +409,9 @@ async function prosesLogin(e) {
       Swal.close();
       tanganiGagal();
     }
-
   } catch (err) {
-    console.warn('[SiDiK] Auth gagal:', err.message);
     Swal.close();
-    Swal.fire({ icon:'error', title:'Ralat Sambungan',
-      text:'Tidak dapat menghubungi pelayan pengesahan. Cuba sebentar lagi.',
-      background:'#0a0f0d', color:'#fff' });
+    Swal.fire({ icon:'error', title:'Ralat Sambungan', text:'Tidak dapat menghubungi pelayan pengesahan.', background:'#0a0f0d', color:'#fff' });
     resetBtn();
   }
 }
@@ -451,9 +444,10 @@ function tunjukKejayaan(emel, nama) {
 }
 
 // ── Sesi ─────────────────────────────────────────────────────────────
-function simpanSesi(emel, nama, peranan, ptj) {
+function simpanSesi(emel, nama, peranan, ptj, akses) {
   const expiry = Date.now() + CFG.SESSION_MINUTES * 60_000;
-  sessionStorage.setItem(CFG.STORAGE_KEY, btoa(JSON.stringify({ emel, nama, peranan, ptj, expiry })));
+  // ✅ PERUBAHAN DI SINI: Masukkan 'akses' ke dalam JSON
+  sessionStorage.setItem(CFG.STORAGE_KEY, btoa(JSON.stringify({ emel, nama, peranan, ptj, akses, expiry })));
   sessionExpiry = expiry;
 }
 
