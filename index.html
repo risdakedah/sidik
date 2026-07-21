@@ -410,9 +410,28 @@ async function prosesLogin(e) {
       tanganiGagal();
     }
   } catch (err) {
+    // Ralat sambungan BUKAN cubaan gagal sebenar — jangan tolak pengguna ke arah lockout
+    attemptCount = Math.max(0, attemptCount - 1);
+    kemaskinWarning();
+
     Swal.close();
-    Swal.fire({ icon:'error', title:'Ralat Sambungan', text:'Tidak dapat menghubungi pelayan pengesahan.', background:'#0a0f0d', color:'#fff' });
-    resetBtn();
+    const adalahTimeout = /timeout/i.test((err && err.message) || '');
+    Swal.fire({
+      icon: 'error',
+      title: 'Ralat Sambungan',
+      html: adalahTimeout
+        ? 'Pelayan pengesahan mengambil masa terlalu lama untuk membalas.<br>Ia mungkin baru &quot;bangun&quot; — sila <b>cuba sekali lagi</b> sebentar lagi.'
+        : 'Tidak dapat menghubungi pelayan pengesahan.<br>Sila semak sambungan internet anda, kemudian cuba semula.',
+      background: '#0a0f0d', color: '#fff',
+      showCancelButton: true,
+      confirmButtonText: '<i class="fas fa-rotate-right me-1"></i> Cuba Semula',
+      cancelButtonText: 'Tutup',
+      confirmButtonColor: '#009955',
+      cancelButtonColor: '#333'
+    }).then(r => {
+      resetBtn();
+      if (r.isConfirmed) document.getElementById('loginForm').requestSubmit();
+    });
   }
 }
 
