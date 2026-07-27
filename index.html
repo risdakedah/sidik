@@ -241,6 +241,11 @@
       <div style="color:#888;font-size:0.85rem;">
         <i class="fas fa-spinner fa-spin me-1"></i>Memuatkan SiDiK...
       </div>
+      <div style="margin-top:14px;font-size:0.78rem;color:#666;line-height:1.6;">
+        Tidak terbuka selepas beberapa saat?
+        <a id="pautanSandaran" href="#" style="color:var(--risda-gold);text-decoration:underline;">Klik di sini</a><br>
+        <span style="color:#555;">Pilih akaun <b>@risda.gov.my</b> anda jika Google bertanya.</span>
+      </div>
     </div>
 
   </div>
@@ -255,7 +260,16 @@
 // KONFIGURASI
 // ══════════════════════════════════════════════════════════════════════
 const CFG = Object.freeze({
+  // URL generik — KHUSUS untuk panggilan JSONP pengesahan sahaja. JANGAN tukar
+  // kepada bentuk /a/macros/: panggilan <script src> tidak boleh ikut redirect
+  // pemilih akaun Google, ia akan gagal senyap.
   GAS_URL        : 'https://script.google.com/macros/s/AKfycbzHNXz-kDnSS0LHn9VQmOckeHfC58oXBomikv01zuTm0EgrB9ye0z82hxm7LNjR4CJVqw/exec',
+  // URL domain-scoped — untuk redirect pengguna masuk ke SiDiK. Bentuk
+  // /a/macros/risda.gov.my/ memaksa Google resolve guna akaun dalam domain
+  // RISDA. Tanpa ini, Google guna akaun LALAI browser (authuser=0) — pengguna
+  // yang akaun lalainya Gmail peribadi dapat "You need access" walaupun akaun
+  // RISDA mereka sedang log masuk sebagai akaun kedua.
+  GAS_URL_LANCAR : 'https://script.google.com/a/macros/risda.gov.my/s/AKfycbzHNXz-kDnSS0LHn9VQmOckeHfC58oXBomikv01zuTm0EgrB9ye0z82hxm7LNjR4CJVqw/exec',
   MAX_ATTEMPTS   : 5,
   LOCKOUT_MINUTES: 15,
   SESSION_MINUTES: 120,
@@ -453,13 +467,28 @@ function resetBtn() {
 }
 
 // ── Paparan kejayaan & redirect ──────────────────────────────────────
+// Bina URL lancar: domain-scoped + authuser=<emel>. Parameter authuser
+// memberitahu Google akaun MANA satu hendak digunakan antara berbilang akaun
+// yang sedang log masuk; ia dimakan oleh Google dan tidak sampai ke doGet().
+function urlLancarSiDiK(emel) {
+  const base = CFG.GAS_URL_LANCAR;
+  return emel ? base + '?authuser=' + encodeURIComponent(emel) : base;
+}
+
 function tunjukKejayaan(emel, nama) {
   const papar = nama || emel.split('@')[0];
+  const url   = urlLancarSiDiK(emel);
   document.getElementById('panel-login').style.display  = 'none';
   document.getElementById('panel-berjaya').style.display = 'block';
   document.getElementById('displayNama').textContent     = papar;
+
+  // Pautan sandaran — jika redirect tersangkut di skrin akaun Google,
+  // pengguna masih ada jalan masuk tanpa perlu tukar browser/incognito.
+  const sandaran = document.getElementById('pautanSandaran');
+  if (sandaran) sandaran.href = url;
+
   // Redirect ke SiDiK GAS selepas 2 saat
-  setTimeout(() => { window.location.href = CFG.GAS_URL; }, 2000);
+  setTimeout(() => { window.location.href = url; }, 2000);
 }
 
 // ── Sesi ─────────────────────────────────────────────────────────────
