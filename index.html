@@ -288,7 +288,7 @@
       <div style="margin-top:14px;font-size:0.78rem;color:#666;line-height:1.6;">
         Tidak terbuka selepas beberapa saat?
         <a id="pautanSandaran" href="#" style="color:var(--risda-gold);text-decoration:underline;">Klik di sini</a><br>
-        <span style="color:#555;">Pilih akaun <b>@risda.gov.my</b> anda jika Google bertanya.</span>
+        <span id="notaAkaun" style="color:#555;">Pilih akaun <b>@risda.gov.my</b> anda jika Google bertanya.</span>
       </div>
     </div>
 
@@ -442,9 +442,18 @@ function panggilGAS(token, urlAsas, timeoutMs, emel) {
 // berjaya bila pengguna ada beberapa akaun Google), kemudian URL generik
 // sebagai sandaran. Jika kedua-duanya gagal, lontar ralat supaya pemanggil
 // boleh hantar pengguna terus ke SiDiK — biar SiDiK sendiri yang tapis akses.
+//
+// semakanAkaunBerjaya = panggilan dengan authuser=<emel> berjaya, iaitu pelayar
+// ini SUDAH log masuk Google sebagai emel yang ditaip. Jika gagal, redirect
+// terus dengan authuser=<emel> berakhir di skrin buntu Google "Sorry, unable to
+// open the file at present" — jadi hantar melalui pemilih akaun Google dahulu.
+let semakanAkaunBerjaya = false;
 async function panggilGASBerlapis(token, emel) {
+  semakanAkaunBerjaya = false;
   try {
-    return await panggilGAS(token, CFG.GAS_URL_LANCAR, 12000, emel);
+    const data = await panggilGAS(token, CFG.GAS_URL_LANCAR, 12000, emel);
+    semakanAkaunBerjaya = true;
+    return data;
   } catch (e1) {
     return await panggilGAS(token, CFG.GAS_URL, 8000);
   }
@@ -483,7 +492,7 @@ async function prosesLogin(e) {
       
       Swal.close();
       mainkanBunyi();
-      tunjukKejayaan(emel, data.nama);
+      tunjukKejayaan(emel, data.nama, !semakanAkaunBerjaya);
     } else {
       Swal.close();
       tanganiGagal();
@@ -501,7 +510,7 @@ async function prosesLogin(e) {
     kemaskinWarning();
 
     Swal.close();
-    const url = urlLancarSiDiK(emel);
+    const url = urlLancarSiDiK(emel, true);
     Swal.fire({
       icon: 'info',
       title: 'Menghantar Anda Ke SiDiK',
@@ -542,14 +551,22 @@ function resetBtn() {
 // Bina URL lancar: domain-scoped + authuser=<emel>. Parameter authuser
 // memberitahu Google akaun MANA satu hendak digunakan antara berbilang akaun
 // yang sedang log masuk; ia dimakan oleh Google dan tidak sampai ke doGet().
-function urlLancarSiDiK(emel) {
+//
+// melaluiPilihAkaun = true: lalu dahulu halaman log masuk Google dengan emel
+// sudah terisi. Jika pelayar belum log masuk sebagai emel itu, Google minta
+// kata laluannya, kemudian terus membuka SiDiK (parameter continue).
+function urlLancarSiDiK(emel, melaluiPilihAkaun) {
   const base = CFG.GAS_URL_LANCAR;
-  return emel ? base + '?authuser=' + encodeURIComponent(emel) : base;
+  const url  = emel ? base + '?authuser=' + encodeURIComponent(emel) : base;
+  if (!emel || !melaluiPilihAkaun) return url;
+  return 'https://accounts.google.com/AccountChooser'
+    + '?Email=' + encodeURIComponent(emel)
+    + '&continue=' + encodeURIComponent(url);
 }
 
-function tunjukKejayaan(emel, nama) {
+function tunjukKejayaan(emel, nama, melaluiPilihAkaun) {
   const papar = nama || emel.split('@')[0];
-  const url   = urlLancarSiDiK(emel);
+  const url   = urlLancarSiDiK(emel, melaluiPilihAkaun);
   document.getElementById('panel-login').style.display  = 'none';
   document.getElementById('panel-berjaya').style.display = 'block';
   document.getElementById('displayNama').textContent     = papar;
@@ -558,6 +575,10 @@ function tunjukKejayaan(emel, nama) {
   // pengguna masih ada jalan masuk tanpa perlu tukar browser/incognito.
   const sandaran = document.getElementById('pautanSandaran');
   if (sandaran) sandaran.href = url;
+  const nota = document.getElementById('notaAkaun');
+  if (nota && melaluiPilihAkaun) {
+    nota.textContent = 'Google akan meminta anda log masuk sebagai ' + emel + ' sebelum SiDiK dibuka.';
+  }
 
   // Redirect ke SiDiK GAS selepas 2 saat
   setTimeout(() => { window.location.href = url; }, 2000);
