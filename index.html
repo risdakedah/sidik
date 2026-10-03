@@ -474,6 +474,7 @@ async function prosesLogin(e) {
     return;
   }
 
+  sediakanBunyi();
   attemptCount++;
   loginBtn.disabled = true;
   loginBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Mengesahkan...';
@@ -495,7 +496,7 @@ async function prosesLogin(e) {
       tunjukKejayaan(emel, data.nama, !semakanAkaunBerjaya);
     } else {
       Swal.close();
-      tanganiGagal();
+      tanganiGagal(data && data.akaunBerbeza === true);
     }
   } catch (err) {
     // Semakan awal tidak dapat dijalankan (biasanya kerana Google menyekat
@@ -530,10 +531,20 @@ async function prosesLogin(e) {
   }
 }
 
-function tanganiGagal() {
+// akaunBerbeza = pelayan dapati emel yang ditaip BUKAN akaun Google yang sedang
+// log masuk dalam pelayar ini (rujuk prosesAuthSiDiK dalam Code.js SiDiK).
+function tanganiGagal(akaunBerbeza) {
+  mainkanBunyi('ditolak');
   if (attemptCount >= CFG.MAX_ATTEMPTS) { Swal.close(); tetapkanLockout(); return; }
   kemaskinWarning();
   resetBtn();
+  if (akaunBerbeza) {
+    Swal.fire({ icon:'error', title:'🛑 EMEL TIDAK SEPADAN',
+      html:'Emel ini bukan akaun Google yang sedang log masuk dalam pelayar ini.<br><br>'
+         + '<span style="font-size:0.9rem;color:#aaa;">Taip emel akaun anda sendiri, atau log masuk Google sebagai emel tersebut dahulu.</span>',
+      background:'#0a0f0d', color:'#fff', confirmButtonColor:'#dc3545' });
+    return;
+  }
   Swal.fire({ icon:'error', title:'🛑 AKSES DISEKAT',
     text:'Emel anda tidak mempunyai kebenaran akses SiDiK.',
     background:'#0a0f0d', color:'#fff', confirmButtonColor:'#dc3545' });
@@ -612,21 +623,82 @@ function perbaharuiSesi() {
   sessionExpiry = sesi.expiry;
 }
 
-// ── Bunyi berjaya ────────────────────────────────────────────────────
-function mainkanBunyi() {
+// ── Bunyi log masuk ──────────────────────────────────────────────────
+// 'berjaya' = Pintu Bilik Kebal (desis hidraulik + dentang logam + nada naik)
+// 'ditolak' = Pintu Terkunci (desis terhenti + klunk berat + nada menurun)
+// Dijana terus dengan Web Audio — tiada fail audio untuk dimuat turun.
+let _audioCtx = null;
+
+// Panggil SEGERA dalam pengendali klik, sebelum sebarang await. Pelayar
+// (terutama Safari iPhone) menyekat AudioContext yang dicipta/disambung
+// beberapa saat selepas klik — semakan GAS boleh mengambil masa itu.
+function sediakanBunyi() {
   try {
-    const ctx  = new (window.AudioContext || window.webkitAudioContext)();
-    const osc  = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.type = 'sine';
-    osc.frequency.setValueAtTime(600, ctx.currentTime);
-    osc.frequency.exponentialRampToValueAtTime(1200, ctx.currentTime + 0.2);
-    gain.gain.setValueAtTime(0, ctx.currentTime);
-    gain.gain.linearRampToValueAtTime(0.2, ctx.currentTime + 0.1);
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
-    osc.connect(gain); gain.connect(ctx.destination);
-    osc.start(); osc.stop(ctx.currentTime + 0.4);
-  } catch { /* AudioContext tidak tersedia */ }
+    if (!_audioCtx) _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (_audioCtx.state === 'suspended') _audioCtx.resume();
+  } catch { _audioCtx = null; }
+}
+
+function mainkanBunyi(jenis = 'berjaya') {
+  try {
+    sediakanBunyi();
+    const c = _audioCtx;
+    if (!c) return;
+    const t0 = c.currentTime;
+
+    const keluar = c.createGain(), komp = c.createDynamicsCompressor();
+    keluar.gain.value = 0.9;
+    keluar.connect(komp); komp.connect(c.destination);
+
+    // Gema ringkas — impuls hingar yang mereput
+    const gema = (saat, reput, basah) => {
+      const len = Math.floor(c.sampleRate * saat), buf = c.createBuffer(2, len, c.sampleRate);
+      for (let ch = 0; ch < 2; ch++) {
+        const d = buf.getChannelData(ch);
+        for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, reput);
+      }
+      const cv = c.createConvolver(), w = c.createGain();
+      cv.buffer = buf; w.gain.value = basah;
+      cv.connect(w); w.connect(keluar);
+      return cv;
+    };
+    const nada = (dest, { jenis = 'sine', f0, f1, mula = 0, dur = 0.3, vol = 0.3, serang = 0.01 }) => {
+      const t = t0 + mula, o = c.createOscillator(), g = c.createGain();
+      o.type = jenis;
+      o.frequency.setValueAtTime(f0, t);
+      if (f1) o.frequency.exponentialRampToValueAtTime(f1, t + dur);
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(vol, t + serang);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+      o.connect(g); dest.forEach(x => g.connect(x));
+      o.start(t); o.stop(t + dur + 0.05);
+    };
+    const desis = (dur, frekPotong, vol) => {
+      const len = Math.floor(c.sampleRate * dur), buf = c.createBuffer(1, len, c.sampleRate), d = buf.getChannelData(0);
+      for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
+      const s = c.createBufferSource(), hp = c.createBiquadFilter(), g = c.createGain();
+      s.buffer = buf; hp.type = 'highpass'; hp.frequency.value = frekPotong;
+      g.gain.setValueAtTime(0.0001, t0);
+      g.gain.exponentialRampToValueAtTime(vol, t0 + 0.04);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+      s.connect(hp); hp.connect(g); g.connect(keluar); s.start(t0);
+    };
+
+    if (jenis === 'ditolak') {
+      const r = gema(2.2, 2.4, 0.45);
+      desis(0.25, 2500, 0.3);
+      nada([keluar], { f0: 80, f1: 35, mula: 0.22, dur: 0.45, vol: 0.9, serang: 0.003 });
+      [1, 2.4, 4.1].forEach((k, i) => nada([keluar, r], { f0: 140 * k, mula: 0.22, dur: 0.5 - i * 0.1, vol: 0.2 / (i + 1), serang: 0.002 }));
+      nada([keluar, r], { jenis: 'triangle', f0: 330, f1: 165,   mula: 0.55, dur: 0.9, vol: 0.18, serang: 0.05 });
+      nada([keluar, r], { jenis: 'triangle', f0: 311, f1: 155.5, mula: 0.55, dur: 0.9, vol: 0.1,  serang: 0.05 });
+    } else {
+      const r = gema(2.5, 2.2, 0.5);
+      desis(0.55, 3000, 0.35);
+      nada([keluar], { f0: 110, f1: 45, mula: 0.35, dur: 0.4, vol: 0.8, serang: 0.004 });
+      [1, 2.76, 5.4, 8.93].forEach((k, i) => nada([keluar, r], { f0: 220 * k, mula: 0.35, dur: 1.3 - i * 0.2, vol: 0.18 / (i + 1), serang: 0.002 }));
+      nada([keluar, r], { f0: 659.3, f1: 880, mula: 0.75, dur: 1.0, vol: 0.12, serang: 0.2 });
+    }
+  } catch { /* AudioContext tidak tersedia — log masuk diteruskan tanpa bunyi */ }
 }
 
 // ── Event Listeners ──────────────────────────────────────────────────
